@@ -1,0 +1,5 @@
+{
+  "name": "youtube-monitor",
+  "version": "1.0.0",
+  "engines": { "node": ">=18" }
+}
