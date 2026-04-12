@@ -81,7 +81,7 @@ async function fetchAllVideos(channels, since) {
       continue;
     }
     try {
-      const raw = await searchVideos(ch.id, since, 15);
+      const raw = await searchVideos(ch.id, since, 50);
       console.log(`Found ${raw.length} videos for ${ch.name} (${ch.id})`);
       allRaw.push(...raw);
     } catch (e) {
