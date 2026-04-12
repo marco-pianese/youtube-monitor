@@ -1,0 +1,8 @@
+{
+  "name": "yt-monitor-v2",
+  "version": "1.0.0",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@vercel/kv": "^2.0.0"
+  }
+}
