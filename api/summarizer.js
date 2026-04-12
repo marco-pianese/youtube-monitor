@@ -8,10 +8,10 @@ export async function generateSummaries(videos) {
   const prompt = `Sei un assistente che genera riassunti di video YouTube in italiano.
 Per ciascuno dei seguenti video, genera:
 - "short": riassunto sintetico di 2-3 frasi in italiano sui punti chiave principali
-- "detailed": riassunto dettagliato in italiano con ESATTAMENTE 4 paragrafi separati da \\n\\n. Ogni paragrafo deve trattare: 1) Tema principale e contesto, 2) Punti chiave e argomentazioni, 3) Esempi o casi pratici, 4) Conclusioni e takeaway
+- "detailed": riassunto dettagliato in italiano con ESATTAMENTE 4 sezioni. Ogni sezione deve avere un titolo breve (3-5 parole) seguito da due punti e poi il testo del paragrafo. Separa le sezioni con \\n\\n. Struttura: "Tema e contesto: [testo]\\n\\nPunti chiave: [testo]\\n\\nEsempi pratici: [testo]\\n\\nConclusioni: [testo]"
 
 Rispondi SOLO con un array JSON valido senza testo aggiuntivo né backtick:
-[{"index":0,"short":"...","detailed":"paragrafo1\\n\\nparagrafo2\\n\\nparagrafo3\\n\\nparagrafo4"}]
+[{"index":0,"short":"...","detailed":"Tema e contesto: testo...\\n\\nPunti chiave: testo...\\n\\nEsempi pratici: testo...\\n\\nConclusioni: testo..."}]
 
 Video:
 ${list}`;
@@ -46,13 +46,16 @@ Canale: "${video.channel}"
 Titolo: "${video.title}"
 Descrizione: "${video.description || "N/A"}"
 
-Scrivi ESATTAMENTE 4 paragrafi separati da una riga vuota, strutturati così:
-- Paragrafo 1: Tema principale e contesto del video
-- Paragrafo 2: Punti chiave e argomentazioni principali
-- Paragrafo 3: Esempi concreti, dati o casi pratici trattati
-- Paragrafo 4: Conclusioni, takeaway e perché vale la pena guardarlo
+Scrivi ESATTAMENTE 4 sezioni separate da una riga vuota. Ogni sezione inizia con un titolo breve (3-5 parole) seguito da due punti, poi il testo. Esempio formato:
+"Tema e contesto: testo del paragrafo...
 
-Scrivi solo i 4 paragrafi separati da riga vuota, senza titoli, senza numerazione, senza altro testo.`;
+Punti chiave: testo del paragrafo...
+
+Esempi e dati: testo del paragrafo...
+
+Conclusioni e takeaway: testo del paragrafo..."
+
+Scrivi solo le 4 sezioni, nessun altro testo.`;
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

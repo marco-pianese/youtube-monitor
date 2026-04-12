@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     }
   }
 
-  if (!video) return res.status(404).json({ error: "Video non trovato" });
+  if (!video) return res.status(404).json({ error: "Video non trovato. Verifica che il link sia corretto." });
 
   try {
     const detailed = await generateDetailedSummary(video);

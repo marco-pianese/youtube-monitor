@@ -3,7 +3,7 @@ export const DEFAULT_CHANNELS = [
   { id: null, handle: "MarcoCasarioEXTRA", name: "Marco Casario EXTRA", enabled: true },
   { id: null, handle: "TheCryptoGateway", name: "The Crypto Gateway - Investire in Criptovalute", enabled: false },
   { id: null, handle: "AndrejKarpathy", name: "Andrej Karpathy", enabled: true },
-  { id: null, handle: "AlexHormozi", name: "Alex Hormozi", enabled: true },
+  { id: "UCUyDOdBWhC1MCxEjC46d-zw", handle: "AlexHormozi", name: "Alex Hormozi", enabled: true },
   { id: null, handle: "TheDiaryOfACEO", name: "The Diary Of A CEO", enabled: true }
 ];
 
