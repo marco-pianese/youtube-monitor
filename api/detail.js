@@ -1,5 +1,6 @@
 import { kv } from "@vercel/kv";
 import { generateDetailedSummary } from "./summarizer.js";
+import { getVideoById } from "./youtube.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -15,12 +16,21 @@ export default async function handler(req, res) {
   if (cached) return res.status(200).json({ detailed: cached });
 
   let video = _video;
+
   if (!video) {
     const cache = await kv.get("videos_cache");
     video = cache?.videos?.find(v => v.id === videoId);
   }
 
-  if (!video) return res.status(404).json({ error: "Video not found" });
+  if (!video) {
+    try {
+      video = await getVideoById(videoId);
+    } catch (e) {
+      console.error("YouTube fetch error:", e.message);
+    }
+  }
+
+  if (!video) return res.status(404).json({ error: "Video non trovato" });
 
   try {
     const detailed = await generateDetailedSummary(video);

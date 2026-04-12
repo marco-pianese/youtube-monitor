@@ -33,13 +33,13 @@ export default async function handler(req, res) {
 
     if (needsFullSync) {
       const since = new Date(Date.now() - days * 86400000).toISOString();
-      videos = await fetchAllVideos(enabledChannels, since, days);
+      videos = await fetchAllVideos(enabledChannels, since);
       await kv.set("videos_cache", { videos, syncedAt: new Date().toISOString() });
       await kv.set("last_sync", new Date().toISOString());
     } else {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const newVideos = await fetchAllVideos(enabledChannels, todayStart.toISOString(), 1);
+      const newVideos = await fetchAllVideos(enabledChannels, todayStart.toISOString());
       const existingIds = new Set(videos.map(v => v.id));
       const trulyNew = newVideos.filter(v => !existingIds.has(v.id));
       if (trulyNew.length) {
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
   }
 }
 
-async function fetchAllVideos(channels, since, days) {
+async function fetchAllVideos(channels, since) {
   const resolvedChannels = await resolveChannels(channels);
   const allRaw = [];
 

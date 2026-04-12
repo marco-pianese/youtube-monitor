@@ -3,17 +3,35 @@ const API_KEY = process.env.YOUTUBE_API_KEY;
 
 export async function resolveChannelId(handle) {
   const clean = handle.replace(/^@/, "");
-  const r = await fetch(`${YT_BASE}/channels?part=snippet&forHandle=${encodeURIComponent(clean)}&key=${API_KEY}`);
-  const d = await r.json();
-  if (d.items?.length) return { id: d.items[0].id, name: d.items[0].snippet.title, thumb: d.items[0].snippet.thumbnails?.default?.url };
-  const r2 = await fetch(`${YT_BASE}/search?part=snippet&type=channel&q=${encodeURIComponent(clean)}&maxResults=1&key=${API_KEY}`);
-  const d2 = await r2.json();
-  if (!d2.items?.length) return null;
-  const chId = d2.items[0].snippet.channelId;
-  const r3 = await fetch(`${YT_BASE}/channels?part=snippet&id=${chId}&key=${API_KEY}`);
-  const d3 = await r3.json();
-  if (!d3.items?.length) return null;
-  return { id: chId, name: d3.items[0].snippet.title, thumb: d3.items[0].snippet.thumbnails?.default?.url };
+
+  // Strategy 1: forHandle
+  try {
+    const r = await fetch(`${YT_BASE}/channels?part=snippet&forHandle=${encodeURIComponent(clean)}&key=${API_KEY}`);
+    const d = await r.json();
+    if (d.items?.length) return { id: d.items[0].id, name: d.items[0].snippet.title, thumb: d.items[0].snippet.thumbnails?.default?.url };
+  } catch {}
+
+  // Strategy 2: forUsername
+  try {
+    const r = await fetch(`${YT_BASE}/channels?part=snippet&forUsername=${encodeURIComponent(clean)}&key=${API_KEY}`);
+    const d = await r.json();
+    if (d.items?.length) return { id: d.items[0].id, name: d.items[0].snippet.title, thumb: d.items[0].snippet.thumbnails?.default?.url };
+  } catch {}
+
+  // Strategy 3: search
+  try {
+    const r = await fetch(`${YT_BASE}/search?part=snippet&type=channel&q=${encodeURIComponent(clean)}&maxResults=3&key=${API_KEY}`);
+    const d = await r.json();
+    if (d.items?.length) {
+      const best = d.items.find(i => i.snippet.channelTitle.toLowerCase().includes(clean.toLowerCase())) || d.items[0];
+      const chId = best.snippet.channelId;
+      const r2 = await fetch(`${YT_BASE}/channels?part=snippet&id=${chId}&key=${API_KEY}`);
+      const d2 = await r2.json();
+      if (d2.items?.length) return { id: chId, name: d2.items[0].snippet.title, thumb: d2.items[0].snippet.thumbnails?.default?.url };
+    }
+  } catch {}
+
+  return null;
 }
 
 export async function searchVideos(channelId, publishedAfter, maxResults = 10) {
@@ -39,8 +57,26 @@ export async function getVideoDetails(videoIds) {
     id: i.id,
     duration: parseDuration(i.contentDetails.duration),
     title: i.snippet.title,
-    description: i.snippet.description?.slice(0, 500) || ""
+    description: i.snippet.description?.slice(0, 800) || ""
   }));
+}
+
+export async function getVideoById(videoId) {
+  const r = await fetch(`${YT_BASE}/videos?part=snippet,contentDetails&id=${videoId}&key=${API_KEY}`);
+  const d = await r.json();
+  if (!d.items?.length) return null;
+  const item = d.items[0];
+  return {
+    id: videoId,
+    title: item.snippet.title,
+    channel: item.snippet.channelTitle,
+    channelId: item.snippet.channelId,
+    published: item.snippet.publishedAt,
+    thumb: item.snippet.thumbnails?.medium?.url || "",
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    description: item.snippet.description?.slice(0, 800) || "",
+    duration: formatDuration(parseDuration(item.contentDetails.duration))
+  };
 }
 
 export function parseDuration(iso) {

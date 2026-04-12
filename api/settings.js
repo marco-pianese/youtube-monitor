@@ -27,3 +27,8 @@ export default async function handler(req, res) {
 
   res.status(405).end();
 }
+
+export async function getSettings() {
+  const settings = await kv.get("settings");
+  return settings || { channels: DEFAULT_CHANNELS, days: DEFAULT_DAYS };
+}
