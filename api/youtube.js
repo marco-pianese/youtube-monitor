@@ -4,21 +4,18 @@ const API_KEY = process.env.YOUTUBE_API_KEY;
 export async function resolveChannelId(handle) {
   const clean = handle.replace(/^@/, "");
 
-  // Strategy 1: forHandle
   try {
     const r = await fetch(`${YT_BASE}/channels?part=snippet&forHandle=${encodeURIComponent(clean)}&key=${API_KEY}`);
     const d = await r.json();
     if (d.items?.length) return { id: d.items[0].id, name: d.items[0].snippet.title, thumb: d.items[0].snippet.thumbnails?.default?.url };
   } catch {}
 
-  // Strategy 2: forUsername
   try {
     const r = await fetch(`${YT_BASE}/channels?part=snippet&forUsername=${encodeURIComponent(clean)}&key=${API_KEY}`);
     const d = await r.json();
     if (d.items?.length) return { id: d.items[0].id, name: d.items[0].snippet.title, thumb: d.items[0].snippet.thumbnails?.default?.url };
   } catch {}
 
-  // Strategy 3: search
   try {
     const r = await fetch(`${YT_BASE}/search?part=snippet&type=channel&q=${encodeURIComponent(clean)}&maxResults=3&key=${API_KEY}`);
     const d = await r.json();
@@ -34,8 +31,11 @@ export async function resolveChannelId(handle) {
   return null;
 }
 
-export async function searchVideos(channelId, publishedAfter, maxResults = 10) {
-  const r = await fetch(`${YT_BASE}/search?part=snippet&channelId=${channelId}&type=video&order=date&publishedAfter=${publishedAfter}&maxResults=${maxResults}&key=${API_KEY}`);
+export async function searchVideosByDuration(channelId, publishedAfter, duration, maxResults = 15) {
+  const r = await fetch(
+    `${YT_BASE}/search?part=snippet&channelId=${channelId}&type=video&order=date` +
+    `&publishedAfter=${publishedAfter}&videoDuration=${duration}&maxResults=${maxResults}&key=${API_KEY}`
+  );
   const d = await r.json();
   return (d.items || []).map(i => ({
     id: i.id.videoId,

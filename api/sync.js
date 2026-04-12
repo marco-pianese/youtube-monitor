@@ -1,7 +1,7 @@
 import { kv } from "@vercel/kv";
-import { resolveChannelId, searchVideos, getVideoDetails, formatDuration } from "./youtube.js";
+import { resolveChannelId, searchVideosByDuration, getVideoDetails, formatDuration } from "./youtube.js";
 import { generateSummaries } from "./summarizer.js";
-import { DEFAULT_CHANNELS, DEFAULT_DAYS, MIN_DURATION_SECONDS } from "./config.js";
+import { DEFAULT_CHANNELS, DEFAULT_DAYS } from "./config.js";
 
 async function getSettings() {
   const settings = await kv.get("settings");
@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     const days = settings.days || DEFAULT_DAYS;
     const channels = settings.channels || DEFAULT_CHANNELS;
 
-    // Merge hardcoded IDs from DEFAULT_CHANNELS into settings channels
     const mergedChannels = channels.map(ch => {
       const def = DEFAULT_CHANNELS.find(d => d.handle === ch.handle);
       if (def?.id && !ch.id) return { ...ch, id: def.id };
@@ -81,9 +80,21 @@ async function fetchAllVideos(channels, since) {
       continue;
     }
     try {
-      const raw = await searchVideos(ch.id, since, 25);
-      console.log(`Found ${raw.length} videos for ${ch.name} (${ch.id})`);
-      allRaw.push(...raw);
+      // Two filtered calls: medium (4-20 min) + long (>20 min) — no Shorts
+      const [medium, long] = await Promise.all([
+        searchVideosByDuration(ch.id, since, "medium", 15),
+        searchVideosByDuration(ch.id, since, "long", 15)
+      ]);
+
+      const seen = new Set();
+      const combined = [...medium, ...long].filter(v => {
+        if (seen.has(v.id)) return false;
+        seen.add(v.id);
+        return true;
+      });
+
+      console.log(`Found ${combined.length} videos (${medium.length} medium + ${long.length} long) for ${ch.name}`);
+      allRaw.push(...combined);
     } catch (e) {
       console.error(`Error fetching ${ch.name}:`, e.message);
     }
@@ -105,12 +116,7 @@ async function fetchAllVideos(channels, since) {
   details.forEach(d => { detailMap[d.id] = d; });
 
   const filtered = allRaw
-    .filter(v => {
-      const det = detailMap[v.id];
-      if (!det) return false;
-      if (det.duration < MIN_DURATION_SECONDS) return false;
-      return true;
-    })
+    .filter(v => detailMap[v.id])
     .map(v => ({
       ...v,
       duration: formatDuration(detailMap[v.id]?.duration || 0),
@@ -145,29 +151,24 @@ async function resolveChannels(channels) {
   const resolved = [];
 
   for (const ch of channels) {
-    // If channel already has hardcoded ID, use it directly
     if (ch.id) {
       resolved.push(ch);
       cachedChannels[ch.handle] = { id: ch.id, name: ch.name };
       continue;
     }
-
     if (cachedChannels[ch.handle]?.id) {
       resolved.push({ ...ch, ...cachedChannels[ch.handle] });
       continue;
     }
-
     try {
       const info = await resolveChannelId(ch.handle);
       if (info) {
         cachedChannels[ch.handle] = { id: info.id, name: info.name, thumb: info.thumb };
         resolved.push({ ...ch, id: info.id, name: info.name, thumb: info.thumb });
       } else {
-        console.log(`Could not resolve channel: ${ch.handle}`);
         resolved.push(ch);
       }
-    } catch (e) {
-      console.error(`Resolve error for ${ch.handle}:`, e.message);
+    } catch {
       resolved.push(ch);
     }
   }
