@@ -18,7 +18,15 @@ export default async function handler(req, res) {
     const settings = await getSettings();
     const days = settings.days || DEFAULT_DAYS;
     const channels = settings.channels || DEFAULT_CHANNELS;
-    const enabledChannels = channels.filter(c => c.enabled);
+
+    // Merge hardcoded IDs from DEFAULT_CHANNELS into settings channels
+    const mergedChannels = channels.map(ch => {
+      const def = DEFAULT_CHANNELS.find(d => d.handle === ch.handle);
+      if (def?.id && !ch.id) return { ...ch, id: def.id };
+      return ch;
+    });
+
+    const enabledChannels = mergedChannels.filter(c => c.enabled);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -68,9 +76,13 @@ async function fetchAllVideos(channels, since) {
   const allRaw = [];
 
   for (const ch of resolvedChannels) {
-    if (!ch.id) continue;
+    if (!ch.id) {
+      console.log(`Skipping ${ch.name} - no channel ID`);
+      continue;
+    }
     try {
       const raw = await searchVideos(ch.id, since, 15);
+      console.log(`Found ${raw.length} videos for ${ch.name} (${ch.id})`);
       allRaw.push(...raw);
     } catch (e) {
       console.error(`Error fetching ${ch.name}:`, e.message);
@@ -133,19 +145,29 @@ async function resolveChannels(channels) {
   const resolved = [];
 
   for (const ch of channels) {
-    if (cachedChannels[ch.handle]) {
+    // If channel already has hardcoded ID, use it directly
+    if (ch.id) {
+      resolved.push(ch);
+      cachedChannels[ch.handle] = { id: ch.id, name: ch.name };
+      continue;
+    }
+
+    if (cachedChannels[ch.handle]?.id) {
       resolved.push({ ...ch, ...cachedChannels[ch.handle] });
       continue;
     }
+
     try {
       const info = await resolveChannelId(ch.handle);
       if (info) {
         cachedChannels[ch.handle] = { id: info.id, name: info.name, thumb: info.thumb };
         resolved.push({ ...ch, id: info.id, name: info.name, thumb: info.thumb });
       } else {
+        console.log(`Could not resolve channel: ${ch.handle}`);
         resolved.push(ch);
       }
-    } catch {
+    } catch (e) {
+      console.error(`Resolve error for ${ch.handle}:`, e.message);
       resolved.push(ch);
     }
   }

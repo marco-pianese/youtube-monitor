@@ -529,33 +529,21 @@ async function analyzeVideo() {
   document.getElementById('analyzeResult').innerHTML = '<div class="msg"><span class="spinner"></span> Recupero informazioni e genero riassunto...</div>';
 
   try {
-    const detailR = await fetch('/api/detail', {
+    const r = await fetch('/api/detail', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ videoId })
     });
-    const detailData = await detailR.json();
-    if (detailData.error) throw new Error(detailData.error);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
 
-    const detailed = detailData.detailed || '';
-    const paras = detailed.split(/\n\n+/).filter(Boolean);
-
-    const ytR = await fetch(`/api/youtube?endpoint=videos&part=snippet,contentDetails&id=${videoId}`);
-    const ytData = await ytR.json();
-    const item = ytData.items?.[0];
-    const title = item?.snippet?.title || 'Video YouTube';
-    const channel = item?.snippet?.channelTitle || '';
-    const thumb = item?.snippet?.thumbnails?.medium?.url || '';
-
-    const shortR = await fetch('/api/summarize-short', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ video: { id: videoId, title, channel, description: item?.snippet?.description?.slice(0,800) || '' } })
-    });
-    const shortData = await shortR.json();
-    const shortSummary = shortData.short || '';
-
+    const detailed = data.detailed || '';
+    const short = data.short || '';
+    const title = data.title || 'Video YouTube';
+    const channel = data.channel || '';
+    const thumb = data.thumb || '';
     const color = getChannelColor(channel);
+    const paras = detailed.split(/\n\n+/).filter(Boolean);
 
     document.getElementById('analyzeResult').innerHTML = `
       <div class="analyze-card">
@@ -563,7 +551,7 @@ async function analyzeVideo() {
         <div class="analyze-body">
           ${channel ? `<div class="analyze-channel"><span class="ch-badge ${color}">${channel}</span></div>` : ''}
           <div class="analyze-title">${title}</div>
-          <p class="analyze-short">${shortSummary}</p>
+          ${short ? `<p class="analyze-short">${short}</p>` : ''}
           <details>
             <summary>Riassunto dettagliato</summary>
             <div class="detail-paras" style="margin-top:10px;">
