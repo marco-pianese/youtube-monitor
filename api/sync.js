@@ -3,6 +3,11 @@ import { resolveChannelId, searchVideos, getVideoDetails, formatDuration } from 
 import { generateSummaries } from "./summarizer.js";
 import { DEFAULT_CHANNELS, DEFAULT_DAYS, MIN_DURATION_SECONDS } from "./config.js";
 
+async function getSettings() {
+  const settings = await kv.get("settings");
+  return settings || { channels: DEFAULT_CHANNELS, days: DEFAULT_DAYS };
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -36,10 +41,10 @@ export default async function handler(req, res) {
       todayStart.setHours(0, 0, 0, 0);
       const newVideos = await fetchAllVideos(enabledChannels, todayStart.toISOString(), 1);
       const existingIds = new Set(videos.map(v => v.id));
-      const truly_new = newVideos.filter(v => !existingIds.has(v.id));
-      if (truly_new.length) {
+      const trulyNew = newVideos.filter(v => !existingIds.has(v.id));
+      if (trulyNew.length) {
         const cutoff = new Date(Date.now() - days * 86400000);
-        videos = [...truly_new, ...videos].filter(v => new Date(v.published) >= cutoff);
+        videos = [...trulyNew, ...videos].filter(v => new Date(v.published) >= cutoff);
         videos.sort((a, b) => new Date(b.published) - new Date(a.published));
         await kv.set("videos_cache", { videos, syncedAt: new Date().toISOString() });
         await kv.set("last_sync", new Date().toISOString());
@@ -106,20 +111,17 @@ async function fetchAllVideos(channels, since, days) {
   filtered.sort((a, b) => new Date(b.published) - new Date(a.published));
 
   if (filtered.length > 0) {
-    const needsSummary = filtered.filter(v => !v.shortSummary);
-    if (needsSummary.length) {
-      try {
-        const summaries = await generateSummaries(needsSummary);
-        summaries.forEach(s => {
-          const v = needsSummary[s.index];
-          if (v) {
-            v.shortSummary = s.short || "";
-            v.detailedSummary = s.detailed || "";
-          }
-        });
-      } catch (e) {
-        console.error("Summary error:", e.message);
-      }
+    try {
+      const summaries = await generateSummaries(filtered);
+      summaries.forEach(s => {
+        const v = filtered[s.index];
+        if (v) {
+          v.shortSummary = s.short || "";
+          v.detailedSummary = s.detailed || "";
+        }
+      });
+    } catch (e) {
+      console.error("Summary error:", e.message);
     }
   }
 
