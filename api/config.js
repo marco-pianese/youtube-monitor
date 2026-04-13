@@ -7,5 +7,5 @@ export const DEFAULT_CHANNELS = [
   { id: "UCGq-a57w-aPwy13pW7XL1Hw", handle: "TheDiaryOfACEO", name: "The Diary Of A CEO", enabled: true }
 ];
 
-export const DEFAULT_DAYS = 7;
+export const DEFAULT_DAYS = 14;
 export const MIN_DURATION_SECONDS = 180;
