@@ -8,4 +8,4 @@ export const DEFAULT_CHANNELS = [
 ];
 
 export const DEFAULT_DAYS = 7;
-export const MIN_DURATION_SECONDS = 180;
+export const MIN_DURATION_SECONDS = 200;
