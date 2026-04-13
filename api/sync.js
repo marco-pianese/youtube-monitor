@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     const days = settings.days || DEFAULT_DAYS;
     const channels = settings.channels || DEFAULT_CHANNELS;
 
-    // Merge hardcoded IDs from DEFAULT_CHANNELS into settings channels
     const mergedChannels = channels.map(ch => {
       const def = DEFAULT_CHANNELS.find(d => d.handle === ch.handle);
       if (def?.id && !ch.id) return { ...ch, id: def.id };
@@ -73,21 +72,21 @@ export default async function handler(req, res) {
 
 async function fetchAllVideos(channels, since) {
   const resolvedChannels = await resolveChannels(channels);
-  const allRaw = [];
 
-  for (const ch of resolvedChannels) {
-    if (!ch.id) {
-      console.log(`Skipping ${ch.name} - no channel ID`);
-      continue;
-    }
-    try {
-      const raw = await searchVideos(ch.id, since, 50);
-      console.log(`Found ${raw.length} videos for ${ch.name} (${ch.id})`);
-      allRaw.push(...raw);
-    } catch (e) {
-      console.error(`Error fetching ${ch.name}:`, e.message);
-    }
-  }
+  // Fetch all channels IN PARALLEL to avoid timeout
+  const results = await Promise.allSettled(
+    resolvedChannels
+      .filter(ch => ch.id)
+      .map(async ch => {
+        const raw = await searchVideos(ch.id, since, 50);
+        console.log(`Found ${raw.length} videos for ${ch.name} (${ch.id})`);
+        return raw;
+      })
+  );
+
+  const allRaw = results
+    .filter(r => r.status === "fulfilled")
+    .flatMap(r => r.value);
 
   if (!allRaw.length) return [];
 
@@ -95,11 +94,13 @@ async function fetchAllVideos(channels, since) {
   const chunks = [];
   for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
 
-  const details = [];
-  for (const chunk of chunks) {
-    const d = await getVideoDetails(chunk);
-    details.push(...d);
-  }
+  const detailResults = await Promise.allSettled(
+    chunks.map(chunk => getVideoDetails(chunk))
+  );
+
+  const details = detailResults
+    .filter(r => r.status === "fulfilled")
+    .flatMap(r => r.value);
 
   const detailMap = {};
   details.forEach(d => { detailMap[d.id] = d; });
@@ -120,13 +121,21 @@ async function fetchAllVideos(channels, since) {
       detailedSummary: ""
     }));
 
-  filtered.sort((a, b) => new Date(b.published) - new Date(a.published));
+  // Remove duplicates
+  const seen = new Set();
+  const unique = filtered.filter(v => {
+    if (seen.has(v.id)) return false;
+    seen.add(v.id);
+    return true;
+  });
 
-  if (filtered.length > 0) {
+  unique.sort((a, b) => new Date(b.published) - new Date(a.published));
+
+  if (unique.length > 0) {
     try {
-      const summaries = await generateSummaries(filtered);
+      const summaries = await generateSummaries(unique);
       summaries.forEach(s => {
-        const v = filtered[s.index];
+        const v = unique[s.index];
         if (v) {
           v.shortSummary = s.short || "";
           v.detailedSummary = s.detailed || "";
@@ -137,7 +146,7 @@ async function fetchAllVideos(channels, since) {
     }
   }
 
-  return filtered;
+  return unique;
 }
 
 async function resolveChannels(channels) {
@@ -145,29 +154,24 @@ async function resolveChannels(channels) {
   const resolved = [];
 
   for (const ch of channels) {
-    // If channel already has hardcoded ID, use it directly
     if (ch.id) {
       resolved.push(ch);
       cachedChannels[ch.handle] = { id: ch.id, name: ch.name };
       continue;
     }
-
     if (cachedChannels[ch.handle]?.id) {
       resolved.push({ ...ch, ...cachedChannels[ch.handle] });
       continue;
     }
-
     try {
       const info = await resolveChannelId(ch.handle);
       if (info) {
         cachedChannels[ch.handle] = { id: info.id, name: info.name, thumb: info.thumb };
         resolved.push({ ...ch, id: info.id, name: info.name, thumb: info.thumb });
       } else {
-        console.log(`Could not resolve channel: ${ch.handle}`);
         resolved.push(ch);
       }
-    } catch (e) {
-      console.error(`Resolve error for ${ch.handle}:`, e.message);
+    } catch {
       resolved.push(ch);
     }
   }
