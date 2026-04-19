@@ -1,5 +1,5 @@
 import { kv } from "@vercel/kv";
-import { generateDetailedSummary, generateSummaries } from "./summarizer.js";
+import { generateDetailedSummary } from "./summarizer.js";
 import { getVideoById } from "./youtube.js";
 
 export default async function handler(req, res) {
@@ -12,16 +12,30 @@ export default async function handler(req, res) {
   if (!videoId) return res.status(400).json({ error: "Missing videoId" });
 
   const detailCacheKey = `detail_${videoId}`;
-  const shortCacheKey = `short_${videoId}`;
 
+  // Check Redis cache first — avoid regenerating if already done (cached 30 days)
   const cachedDetail = await kv.get(detailCacheKey);
-  const cachedShort = await kv.get(shortCacheKey);
+  if (cachedDetail) {
+    // Still need video metadata for the response
+    const monitorCache = await kv.get("videos_cache");
+    let video = monitorCache?.videos?.find(v => v.id === videoId);
+    if (!video) {
+      try { video = await getVideoById(videoId); } catch {}
+    }
+    return res.status(200).json({
+      detailed: cachedDetail,
+      title: video?.title || "",
+      channel: video?.channel || "",
+      thumb: video?.thumb || "",
+      duration: video?.duration || "",
+      url: video?.url || `https://www.youtube.com/watch?v=${videoId}`
+    });
+  }
 
-  // Check monitor cache
+  // Fetch video metadata from monitor cache or YouTube API
   const monitorCache = await kv.get("videos_cache");
   let video = monitorCache?.videos?.find(v => v.id === videoId);
 
-  // If not in monitor cache, fetch from YouTube
   if (!video) {
     try {
       video = await getVideoById(videoId);
@@ -33,36 +47,27 @@ export default async function handler(req, res) {
 
   if (!video) return res.status(404).json({ error: "Video non trovato." });
 
-  let detailed = cachedDetail;
-  let short = cachedShort || video.shortSummary || "";
+  // Generate detailed summary via Anthropic
+  let detailed = "";
+  try {
+    detailed = await generateDetailedSummary(video);
 
-  if (!detailed) {
-    try {
-      detailed = await generateDetailedSummary(video);
-      await kv.set(detailCacheKey, detailed, { ex: 60 * 60 * 24 * 30 });
+    // Cache in Redis for 30 days
+    await kv.set(detailCacheKey, detailed, { ex: 60 * 60 * 24 * 30 });
 
-      if (monitorCache?.videos) {
-        const videos = monitorCache.videos.map(v => v.id === videoId ? { ...v, detailedSummary: detailed } : v);
-        await kv.set("videos_cache", { ...monitorCache, videos });
-      }
-    } catch (e) {
-      return res.status(500).json({ error: "Errore generazione riassunto: " + e.message });
+    // Also update the monitor cache so the detail is shown without re-fetching
+    if (monitorCache?.videos) {
+      const videos = monitorCache.videos.map(v =>
+        v.id === videoId ? { ...v, detailedSummary: detailed } : v
+      );
+      await kv.set("videos_cache", { ...monitorCache, videos });
     }
-  }
-
-  if (!short) {
-    try {
-      const results = await generateSummaries([video]);
-      short = results?.[0]?.short || "";
-      await kv.set(shortCacheKey, short, { ex: 60 * 60 * 24 * 30 });
-    } catch (e) {
-      console.error("Short summary error:", e.message);
-    }
+  } catch (e) {
+    return res.status(500).json({ error: "Errore generazione riassunto: " + e.message });
   }
 
   res.status(200).json({
     detailed,
-    short,
     title: video.title,
     channel: video.channel,
     thumb: video.thumb,

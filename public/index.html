@@ -80,23 +80,28 @@ nav{background:var(--bg-card);border-top:0.5px solid var(--border2);display:flex
 .vcard-meta{flex:1;min-width:0;}
 .ch-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-bottom:5px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 .vtitle{font-size:13px;font-weight:600;line-height:1.35;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.vcard-info{font-size:11px;color:var(--text3);display:flex;gap:8px;align-items:center;}
+.vcard-info{font-size:11px;color:var(--text3);display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .vdur{background:var(--bg2);padding:1px 6px;border-radius:4px;font-weight:500;}
-.vcard-body{padding:0 14px 14px;}
-.vshort{font-size:13px;color:var(--text2);line-height:1.6;}
-.vshort.loading{color:var(--text3);font-style:italic;}
+.vpub{color:var(--text3);}
 
-/* DETAIL TOGGLE */
-.vdetail-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg2);border:none;border-top:0.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);font-family:inherit;transition:background 0.15s;}
+/* DESCRIPTION */
+.vcard-desc{padding:0 14px 12px;}
+.vdesc-text{font-size:12px;color:var(--text3);line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+
+/* DETAIL SECTION */
+.vdetail-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg2);border:none;border-top:0.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;color:var(--blue-text);font-family:inherit;transition:background 0.15s;gap:8px;}
 .vdetail-toggle:hover{background:var(--bg3);}
-.vdetail-toggle svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform 0.25s;flex-shrink:0;}
+.vdetail-toggle svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform 0.25s;flex-shrink:0;}
 .vdetail-toggle.open svg{transform:rotate(180deg);}
+.vdetail-toggle .btn-label{flex:1;text-align:left;}
+.vdetail-toggle .loading-label{color:var(--text3);font-weight:500;font-style:italic;}
+
 .vdetail-body{display:none;padding:14px;border-top:0.5px solid var(--border);background:var(--bg);}
 .vdetail-body.open{display:block;}
-.vdetail-para{font-size:13px;color:var(--text2);line-height:1.75;margin-bottom:12px;padding-left:12px;border-left:2px solid var(--border2);}
+.vdetail-para{font-size:13px;color:var(--text2);line-height:1.75;margin-bottom:14px;padding-left:12px;border-left:2px solid var(--border2);}
 .vdetail-para:last-of-type{margin-bottom:10px;}
-.vdetail-title{display:block;font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
-.watch-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--accent-text);text-decoration:none;padding:7px 14px;border-radius:var(--r);background:var(--accent-bg);border:0.5px solid currentColor;margin-top:4px;transition:opacity 0.15s;}
+.vdetail-title{display:block;font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;}
+.watch-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--accent-text);text-decoration:none;padding:7px 14px;border-radius:var(--r);background:var(--accent-bg);border:0.5px solid currentColor;margin-top:6px;transition:opacity 0.15s;}
 .watch-link:hover{opacity:0.8;}
 
 /* CHANNEL GROUP */
@@ -142,11 +147,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .analyze-body{padding:1rem;}
 .analyze-title{font-size:16px;font-weight:700;line-height:1.3;margin-bottom:6px;}
 .analyze-channel{font-size:12px;font-weight:600;margin-bottom:12px;}
-.analyze-short{font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:14px;}
+.detail-paras{margin-top:10px;}
 details summary{font-size:13px;font-weight:600;cursor:pointer;color:var(--text2);padding:10px 0;border-top:0.5px solid var(--border);list-style:none;display:flex;align-items:center;justify-content:space-between;}
 details summary::after{content:'▾';font-size:12px;transition:transform 0.2s;}
 details[open] summary::after{transform:rotate(180deg);}
-.detail-paras{margin-top:10px;}
 
 /* UTILS */
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--border2);border-top-color:var(--text);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
@@ -154,7 +158,6 @@ details[open] summary::after{transform:rotate(180deg);}
 .msg{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:14px;}
 .err{background:var(--accent-bg);color:var(--accent-text);border-radius:var(--r);padding:10px 14px;font-size:13px;margin-bottom:12px;border:0.5px solid currentColor;}
 .ok-msg{background:var(--green-bg);color:var(--green-text);border-radius:var(--r);padding:10px 14px;font-size:13px;border:0.5px solid currentColor;}
-.sync-info{font-size:12px;color:var(--text3);margin-bottom:1rem;}
 
 /* CHANNEL COLORS */
 .c0{background:var(--blue-bg);color:var(--blue-text);}
@@ -299,7 +302,7 @@ function formatDate(dateStr) {
 
 function formatDateShort(dateStr) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('it-IT', { day:'numeric', month:'short' });
+  return d.toLocaleDateString('it-IT', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 }
 
 async function loadVideos() {
@@ -382,8 +385,13 @@ function renderVideos() {
 function videoCard(v) {
   const color = getChannelColor(v.channel);
   const dateStr = formatDateShort(v.published);
+  const desc = v.description ? v.description.trim() : '';
+
+  // If detail was already fetched in this session, show it immediately
+  const hasDetail = !!v.detailedSummary;
+
   return `
-    <div class="vcard">
+    <div class="vcard" id="vc-${v.id}">
       <div class="vcard-top">
         ${v.thumb ? `<img class="thumb" src="${v.thumb}" loading="lazy" alt=""/>` : ''}
         <div class="vcard-meta">
@@ -391,46 +399,69 @@ function videoCard(v) {
           <div class="vtitle">${v.title}</div>
           <div class="vcard-info">
             ${v.duration ? `<span class="vdur">${v.duration}</span>` : ''}
+            <span class="vpub">${dateStr}</span>
           </div>
         </div>
       </div>
-      <div class="vcard-body">
-        <p class="vshort ${v.shortSummary ? '' : 'loading'}">${v.shortSummary || 'Riassunto non disponibile.'}</p>
-      </div>
-      <button class="vdetail-toggle" onclick="toggleDetail('${v.id}',this)">
-        <span>Dettagli e riassunto completo</span>
+      ${desc ? `<div class="vcard-desc"><p class="vdesc-text">${desc}</p></div>` : ''}
+      <button class="vdetail-toggle ${hasDetail ? 'open' : ''}" id="vtoggle-${v.id}" onclick="toggleDetail('${v.id}',this)">
+        <span class="btn-label">${hasDetail ? 'Nascondi dettagli' : 'Forniscimi dettagli'}</span>
         <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <div class="vdetail-body" id="vdb-${v.id}"></div>
+      <div class="vdetail-body ${hasDetail ? 'open' : ''}" id="vdb-${v.id}">
+        ${hasDetail ? renderDetailBody(v) : ''}
+      </div>
     </div>`;
 }
 
 async function toggleDetail(id, btn) {
   const body = document.getElementById('vdb-' + id);
   const isOpen = body.classList.contains('open');
-  if (isOpen) { body.classList.remove('open'); btn.classList.remove('open'); return; }
-  btn.classList.add('open');
-  body.classList.add('open');
+
+  if (isOpen) {
+    body.classList.remove('open');
+    btn.classList.remove('open');
+    btn.querySelector('.btn-label').textContent = 'Forniscimi dettagli';
+    return;
+  }
 
   const video = allVideos.find(v => v.id === id);
   if (!video) return;
 
-  if (video.detailedSummary) { body.innerHTML = renderDetailBody(video); return; }
+  // If already fetched, just show
+  if (video.detailedSummary) {
+    body.innerHTML = renderDetailBody(video);
+    body.classList.add('open');
+    btn.classList.add('open');
+    btn.querySelector('.btn-label').textContent = 'Nascondi dettagli';
+    return;
+  }
 
-  body.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:4px 0;"><span class="spinner"></span>Genero riassunto...</p>';
+  // Show loading state
+  btn.querySelector('.btn-label').innerHTML = '<span class="spinner"></span><span class="loading-label">Generazione riassunto...</span>';
+  btn.disabled = true;
+  body.innerHTML = '';
+  body.classList.add('open');
 
   try {
     const r = await fetch('/api/detail', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({videoId: id})
+      body: JSON.stringify({ videoId: id })
     });
     const data = await r.json();
+    if (data.error) throw new Error(data.error);
     video.detailedSummary = data.detailed || '';
     body.innerHTML = renderDetailBody(video);
+    btn.classList.add('open');
+    btn.querySelector('.btn-label').textContent = 'Nascondi dettagli';
   } catch(e) {
-    body.innerHTML = `<p style="color:var(--accent-text);font-size:13px;">Errore: ${e.message}</p>`;
+    body.innerHTML = `<p style="color:var(--accent-text);font-size:13px;padding:4px 0;">Errore: ${e.message}</p>`;
+    btn.classList.remove('open');
+    btn.querySelector('.btn-label').textContent = 'Forniscimi dettagli';
   }
+
+  btn.disabled = false;
 }
 
 function renderDetailBody(video) {
@@ -538,7 +569,6 @@ async function analyzeVideo() {
     if (data.error) throw new Error(data.error);
 
     const detailed = data.detailed || '';
-    const short = data.short || '';
     const title = data.title || 'Video YouTube';
     const channel = data.channel || '';
     const thumb = data.thumb || '';
@@ -551,10 +581,9 @@ async function analyzeVideo() {
         <div class="analyze-body">
           ${channel ? `<div class="analyze-channel"><span class="ch-badge ${color}">${channel}</span></div>` : ''}
           <div class="analyze-title">${title}</div>
-          ${short ? `<p class="analyze-short">${short}</p>` : ''}
-          <details>
+          <details open>
             <summary>Riassunto dettagliato</summary>
-            <div class="detail-paras" style="margin-top:10px;">
+            <div class="detail-paras">
               ${paras.map(p => {
                 const colonIdx = p.indexOf(':');
                 if (colonIdx > 0 && colonIdx < 40) {
