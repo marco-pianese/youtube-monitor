@@ -35,7 +35,12 @@ export async function resolveChannelId(handle) {
 }
 
 export async function searchVideos(channelId, publishedAfter, maxResults = 10) {
-  const r = await fetch(`${YT_BASE}/search?part=snippet&channelId=${channelId}&type=video&order=date&publishedAfter=${publishedAfter}&maxResults=${maxResults}&key=${API_KEY}`);
+  // videoDuration=medium filters out videos under ~4 minutes (Shorts included)
+  // This avoids downloading video IDs we'll discard later, saving API quota
+  const r = await fetch(
+    `${YT_BASE}/search?part=snippet&channelId=${channelId}&type=video&order=date` +
+    `&publishedAfter=${publishedAfter}&maxResults=${maxResults}&videoDuration=medium&key=${API_KEY}`
+  );
   const d = await r.json();
   return (d.items || []).map(i => ({
     id: i.id.videoId,
