@@ -35,13 +35,15 @@ export async function resolveChannelId(handle) {
 }
 
 export async function searchVideos(channelId, publishedAfter, maxResults = 10) {
-  // videoDuration=medium filters out videos under ~4 minutes (Shorts included)
-  // This avoids downloading video IDs we'll discard later, saving API quota
-  const r = await fetch(
-    `${YT_BASE}/search?part=snippet&channelId=${channelId}&type=video&order=date` +
-    `&publishedAfter=${publishedAfter}&maxResults=${maxResults}&videoDuration=medium&key=${API_KEY}`
-  );
+  // No videoDuration filter here — we filter manually after getting contentDetails
+  // so we catch both "medium" (4-20min) and "long" (20min+) videos
+  const url = `${YT_BASE}/search?part=snippet&channelId=${channelId}&type=video&order=date&publishedAfter=${encodeURIComponent(publishedAfter)}&maxResults=${maxResults}&key=${API_KEY}`;
+  const r = await fetch(url);
   const d = await r.json();
+  if (d.error) {
+    console.error(`[youtube] searchVideos error for ${channelId}:`, JSON.stringify(d.error));
+    return [];
+  }
   return (d.items || []).map(i => ({
     id: i.id.videoId,
     title: i.snippet.title,
@@ -58,6 +60,10 @@ export async function getVideoDetails(videoIds) {
   const ids = videoIds.join(",");
   const r = await fetch(`${YT_BASE}/videos?part=contentDetails,snippet&id=${ids}&key=${API_KEY}`);
   const d = await r.json();
+  if (d.error) {
+    console.error(`[youtube] getVideoDetails error:`, JSON.stringify(d.error));
+    return [];
+  }
   return (d.items || []).map(i => ({
     id: i.id,
     duration: parseDuration(i.contentDetails.duration),

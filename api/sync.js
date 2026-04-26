@@ -42,6 +42,7 @@ export default async function handler(req, res) {
 
     if (needsFullSync) {
       const since = new Date(Date.now() - days * 86400000).toISOString();
+      console.log(`[sync] Full sync since ${since}, MIN_DURATION=${MIN_DURATION_SECONDS}s`);
       videos = await fetchAllVideos(enabledChannels, since);
       await kv.set("videos_cache", { videos, syncedAt: new Date().toISOString() });
       await kv.set("last_sync", new Date().toISOString());
@@ -89,7 +90,12 @@ async function fetchAllVideos(channels, since) {
     .filter(r => r.status === "fulfilled")
     .flatMap(r => r.value);
 
-  if (!allRaw.length) return [];
+  if (!allRaw.length) {
+    console.log("[sync] No raw videos found across all channels");
+    return [];
+  }
+
+  console.log(`[sync] Total raw videos before duration filter: ${allRaw.length}`);
 
   const ids = allRaw.map(v => v.id);
   const chunks = [];
@@ -103,24 +109,33 @@ async function fetchAllVideos(channels, since) {
     .filter(r => r.status === "fulfilled")
     .flatMap(r => r.value);
 
+  console.log(`[sync] Got details for ${details.length} videos`);
+
   const detailMap = {};
   details.forEach(d => { detailMap[d.id] = d; });
 
-  const filtered = allRaw
-    .filter(v => {
-      const det = detailMap[v.id];
-      if (!det) return false;
-      if (det.duration < MIN_DURATION_SECONDS) return false;
-      return true;
-    })
-    .map(v => ({
-      ...v,
-      duration: formatDuration(detailMap[v.id]?.duration || 0),
-      durationSecs: detailMap[v.id]?.duration || 0,
-      description: detailMap[v.id]?.description || "",
-      shortSummary: "",
-      detailedSummary: ""
-    }));
+  // Log videos being filtered out for duration
+  const filtered = allRaw.filter(v => {
+    const det = detailMap[v.id];
+    if (!det) {
+      console.log(`[sync] SKIP ${v.id} (${v.title?.slice(0,40)}): no details`);
+      return false;
+    }
+    if (det.duration < MIN_DURATION_SECONDS) {
+      console.log(`[sync] SKIP ${v.id} (${v.title?.slice(0,40)}): ${det.duration}s < ${MIN_DURATION_SECONDS}s`);
+      return false;
+    }
+    return true;
+  }).map(v => ({
+    ...v,
+    duration: formatDuration(detailMap[v.id]?.duration || 0),
+    durationSecs: detailMap[v.id]?.duration || 0,
+    description: detailMap[v.id]?.description || "",
+    shortSummary: "",
+    detailedSummary: ""
+  }));
+
+  console.log(`[sync] Videos after duration filter: ${filtered.length}`);
 
   const seen = new Set();
   const unique = filtered.filter(v => {
