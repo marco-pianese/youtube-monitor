@@ -18,7 +18,6 @@ export default async function handler(req, res) {
     const days = settings.days || DEFAULT_DAYS;
     const channels = settings.channels || DEFAULT_CHANNELS;
 
-    // Merge hardcoded IDs into saved settings (in case settings were saved before IDs were added)
     const mergedChannels = channels.map(ch => {
       const def = DEFAULT_CHANNELS.find(d => d.handle === ch.handle);
       if (def?.id && !ch.id) return { ...ch, id: def.id };
@@ -35,17 +34,18 @@ export default async function handler(req, res) {
     const lastSync = await kv.get("last_sync");
     const lastSyncDate = lastSync ? lastSync.split("T")[0] : null;
 
+    // ?force=1 bypasses cache and always does a full sync
+    const forceSync = req.query?.force === "1";
+
     let videos = cachedData.videos || [];
-    let needsFullSync = !lastSyncDate || lastSyncDate !== todayKey;
+    let needsFullSync = forceSync || !lastSyncDate || lastSyncDate !== todayKey;
 
     if (needsFullSync) {
-      // Full sync: fetch all videos from the last N days
       const since = new Date(Date.now() - days * 86400000).toISOString();
       videos = await fetchAllVideos(enabledChannels, since);
       await kv.set("videos_cache", { videos, syncedAt: new Date().toISOString() });
       await kv.set("last_sync", new Date().toISOString());
     } else {
-      // Incremental sync: only check today's videos
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const newVideos = await fetchAllVideos(enabledChannels, todayStart.toISOString());
@@ -75,8 +75,6 @@ export default async function handler(req, res) {
 async function fetchAllVideos(channels, since) {
   const resolvedChannels = await resolveChannels(channels);
 
-  // Fetch all channels in parallel — keeps well within Vercel's 10s limit
-  // since we are NOT calling Anthropic here anymore
   const results = await Promise.allSettled(
     resolvedChannels
       .filter(ch => ch.id)
@@ -93,7 +91,6 @@ async function fetchAllVideos(channels, since) {
 
   if (!allRaw.length) return [];
 
-  // Batch video detail calls (max 50 IDs per request — YouTube API limit)
   const ids = allRaw.map(v => v.id);
   const chunks = [];
   for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
@@ -109,7 +106,6 @@ async function fetchAllVideos(channels, since) {
   const detailMap = {};
   details.forEach(d => { detailMap[d.id] = d; });
 
-  // Filter out Shorts and very short videos, enrich with duration + description
   const filtered = allRaw
     .filter(v => {
       const det = detailMap[v.id];
@@ -122,12 +118,10 @@ async function fetchAllVideos(channels, since) {
       duration: formatDuration(detailMap[v.id]?.duration || 0),
       durationSecs: detailMap[v.id]?.duration || 0,
       description: detailMap[v.id]?.description || "",
-      // No AI summaries at sync time — generated on-demand via /api/detail
       shortSummary: "",
       detailedSummary: ""
     }));
 
-  // Deduplicate
   const seen = new Set();
   const unique = filtered.filter(v => {
     if (seen.has(v.id)) return false;
@@ -144,18 +138,15 @@ async function resolveChannels(channels) {
   const resolved = [];
 
   for (const ch of channels) {
-    // If ID is already hardcoded, use it directly — no API call needed
     if (ch.id) {
       resolved.push(ch);
       cachedChannels[ch.handle] = { id: ch.id, name: ch.name };
       continue;
     }
-    // Try KV cache before hitting the YouTube API
     if (cachedChannels[ch.handle]?.id) {
       resolved.push({ ...ch, ...cachedChannels[ch.handle] });
       continue;
     }
-    // Last resort: resolve via YouTube API (only for channels without hardcoded ID)
     try {
       const info = await resolveChannelId(ch.handle);
       if (info) {

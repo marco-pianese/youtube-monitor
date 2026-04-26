@@ -41,7 +41,6 @@
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.5;}
 #app{display:flex;flex-direction:column;height:100%;max-width:700px;margin:0 auto;}
-
 .page{flex:1;overflow-y:auto;padding:1.25rem 1rem 1.5rem;display:none;}
 .page.active{display:block;}
 
@@ -94,8 +93,6 @@ nav{background:var(--bg-card);border-top:0.5px solid var(--border2);display:flex
 .vdetail-toggle svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform 0.25s;flex-shrink:0;}
 .vdetail-toggle.open svg{transform:rotate(180deg);}
 .vdetail-toggle .btn-label{flex:1;text-align:left;}
-.vdetail-toggle .loading-label{color:var(--text3);font-weight:500;font-style:italic;}
-
 .vdetail-body{display:none;padding:14px;border-top:0.5px solid var(--border);background:var(--bg);}
 .vdetail-body.open{display:block;}
 .vdetail-para{font-size:13px;color:var(--text2);line-height:1.75;margin-bottom:14px;padding-left:12px;border-left:2px solid var(--border2);}
@@ -178,7 +175,7 @@ details[open] summary::after{transform:rotate(180deg);}
         <div class="page-title">Monitor</div>
         <div class="page-sub" id="syncInfo">Caricamento...</div>
       </div>
-      <button class="btn btn-sm" id="refreshBtn" onclick="loadVideos()">Aggiorna</button>
+      <button class="btn btn-sm" id="refreshBtn" onclick="loadVideos(true)">Aggiorna</button>
     </div>
 
     <div class="stats-row" id="statsGrid" style="display:none;">
@@ -305,7 +302,9 @@ function formatDateShort(dateStr) {
   return d.toLocaleDateString('it-IT', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 }
 
-async function loadVideos() {
+// force=true always does a full sync (used by Aggiorna button)
+// force=false on first load uses cache if available
+async function loadVideos(force = false) {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
@@ -314,7 +313,8 @@ async function loadVideos() {
   document.getElementById('videoList').innerHTML = '<div class="msg"><span class="spinner"></span> Carico i video...</div>';
 
   try {
-    const r = await fetch('/api/sync');
+    const url = force ? '/api/sync?force=1' : '/api/sync';
+    const r = await fetch(url);
     if (!r.ok) throw new Error('Errore server: ' + r.status);
     const data = await r.json();
     allVideos = data.videos || [];
@@ -386,8 +386,6 @@ function videoCard(v) {
   const color = getChannelColor(v.channel);
   const dateStr = formatDateShort(v.published);
   const desc = v.description ? v.description.trim() : '';
-
-  // If detail was already fetched in this session, show it immediately
   const hasDetail = !!v.detailedSummary;
 
   return `
@@ -428,7 +426,6 @@ async function toggleDetail(id, btn) {
   const video = allVideos.find(v => v.id === id);
   if (!video) return;
 
-  // If already fetched, just show
   if (video.detailedSummary) {
     body.innerHTML = renderDetailBody(video);
     body.classList.add('open');
@@ -437,8 +434,7 @@ async function toggleDetail(id, btn) {
     return;
   }
 
-  // Show loading state
-  btn.querySelector('.btn-label').innerHTML = '<span class="spinner"></span><span class="loading-label">Generazione riassunto...</span>';
+  btn.querySelector('.btn-label').innerHTML = '<span class="spinner"></span><span style="color:var(--text3);font-weight:500;font-style:italic;">Generazione riassunto...</span>';
   btn.disabled = true;
   body.innerHTML = '';
   body.classList.add('open');
@@ -608,7 +604,8 @@ async function analyzeVideo() {
   btn.textContent = 'Analizza video';
 }
 
-loadVideos();
+// On first load use cache if available, no force
+loadVideos(false);
 </script>
 </body>
 </html>
